@@ -52,9 +52,7 @@ export function SignBlock({ showESign = false }: { showESign?: boolean } = {}) {
             </span>
           </div>
         ) : (
-          <div style={{ height: 48, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-            <span style={{ fontSize: "9.5px", color: "#888", fontStyle: "italic" }}>(Physical Signature)</span>
-          </div>
+          <div style={{ height: 48 }} />
         )}
 
         <div style={{ borderTop: "1px dashed #777", paddingTop: "4px", fontSize: "0.85rem", fontWeight: 600 }}>
