@@ -860,3 +860,70 @@ select { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- customer hub, stepper, tabs, chips ---------- */
+.stepper { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+.stepper .step { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0; font: inherit; color: var(--text-2); cursor: default; position: relative; }
+.stepper .step:not(:last-of-type) { margin-right: 46px; }
+.stepper .step:not(:last-of-type)::after { content: ""; position: absolute; left: calc(100% + 8px); top: 50%; width: 30px; height: 2px; background: var(--border); }
+.stepper .step.done:not(:last-of-type)::after { background: var(--green-primary); }
+.stepper .step:not(:disabled) { cursor: pointer; }
+.stepper .step i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 700; background: #fff; border: 2px solid var(--border); }
+.stepper .step span { font-size: 13px; font-weight: 600; }
+.stepper .step.done i { background: var(--green-primary); border-color: var(--green-primary); color: #fff; }
+.stepper .step.done { color: var(--green-primary); }
+.stepper .step.now i { border-color: var(--green-primary); color: var(--green-primary); box-shadow: 0 0 0 4px var(--sage); }
+.stepper .step.now { color: var(--green-primary); }
+.stepper.is-cancelled .step { opacity: 0.45; }
+
+.hub-head { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: center; justify-content: space-between; }
+.hub-head h1 { margin: 0 0 4px; }
+.hub-meta { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; color: var(--text-2); font-size: 13px; }
+.next-step { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: var(--sage); }
+.next-step .ns-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--green-primary); font-weight: 700; }
+.next-step .ns-text { font-weight: 600; color: var(--c-text, #0f2a24); }
+.next-step.done { background: #f2f8f3; color: var(--green-primary); }
+
+.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin: 18px 0 16px; flex-wrap: wrap; }
+.tabs button { background: none; border: 0; padding: 10px 16px; font: inherit; font-weight: 600; color: var(--text-2); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.tabs button:hover { color: var(--green-primary); }
+.tabs button.on { color: var(--green-primary); border-bottom-color: var(--green-primary); }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.chips button { background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--green-primary); cursor: pointer; }
+.chips button:hover { background: var(--sage); }
+.chips button.on { background: var(--green-primary); border-color: var(--green-primary); color: #fff; }
+.chips button small { opacity: .75; margin-left: 4px; }
+
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.stat { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; }
+.stat small { display: block; color: var(--text-2); font-size: 12px; }
+.stat b { font-size: 20px; color: var(--green-primary); }
+
+.type-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.type-choice button { text-align: left; background: #fff; border: 2px solid var(--border); border-radius: 14px; padding: 18px; font: inherit; cursor: pointer; }
+.type-choice button:hover { border-color: var(--green-primary); background: var(--sage); }
+.type-choice b { display: block; font-size: 16px; color: var(--green-primary); margin-bottom: 4px; }
+.type-choice span { font-size: 12.5px; color: var(--text-2); }
+@media (max-width: 600px) { .type-choice { grid-template-columns: 1fr; } .stepper .step:not(:last-of-type) { margin-right: 30px; } .stepper .step:not(:last-of-type)::after { width: 16px; } }
+
+/* ---------- login ---------- */
+.login-page { min-height: 100vh; display: grid; place-items: center; background: var(--bg); padding: 20px; }
+.login-card { width: 100%; max-width: 380px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px 28px; display: flex; flex-direction: column; gap: 14px; }
+.login-card h1 { margin: 0; text-align: center; }
+.login-card .hint { text-align: center; margin: -8px 0 4px; }
+.login-logo { height: 64px; object-fit: contain; align-self: center; }
+.pw-wrap { position: relative; display: block; }
+.pw-wrap input { width: 100%; padding-right: 44px; }
+.pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: 0; padding: 6px; cursor: pointer; color: var(--text-2); display: grid; place-items: center; }
+.pw-toggle:hover { color: var(--green-primary); }
+
+/* ---------- dashboard: client form link strip ---------- */
+.intake { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.intake-ico { width: 38px; height: 38px; border-radius: 50%; background: var(--sage); color: var(--green-primary); display: grid; place-items: center; flex: none; }
+.intake-ico svg { width: 18px; height: 18px; }
+.intake-text { display: flex; flex-direction: column; min-width: 200px; flex: 1 1 220px; }
+.intake-text b { color: var(--green-primary); }
+.intake-text small { color: var(--text-2); font-size: 12px; }
+.intake-url { font: 12.5px ui-monospace, Consolas, monospace; color: var(--green-primary); background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; padding: 7px 12px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.intake-actions { display: flex; gap: 8px; align-items: center; }

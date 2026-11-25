@@ -75,12 +75,11 @@ function ListSection({ title, fields, items, onChange, max, addLabel }: {
 const clean = (s: Sec) => Object.fromEntries(Object.entries(s).filter(([, v]) => v !== ""));
 const cleanList = (l: Sec[]) => l.map(clean).filter((x) => Object.keys(x).length > 0);
 
-export default function CustomerForm({ company }: { company: boolean }) {
+export default function CustomerForm({ company, embedded }: { company: boolean; embedded?: boolean }) {
   const { id } = useParams();
   const isNew = !id || id === "new";
   const nav = useNavigate();
   const toast = useToast();
-  const base = company ? "/self-employed" : "/customer-sheet";
   const data = useQuery(api.customers.get, isNew ? "skip" : { id: id as Id<"customers"> });
   const create = useMutation(api.customers.create);
   const update = useMutation(api.customers.update);
@@ -146,7 +145,7 @@ export default function CustomerForm({ company }: { company: boolean }) {
       if (isNew) {
         const newId = await create(payload);
         toast.ok("Customer saved");
-        nav(`${base}/${newId}`, { replace: true });
+        nav(`/customers/${newId}`, { replace: true });
       } else {
         await update({ id: id as Id<"customers">, ...payload });
         toast.ok("Changes saved");
@@ -169,14 +168,15 @@ export default function CustomerForm({ company }: { company: boolean }) {
       : [["employment", type === "NRI" ? "Employment (overseas)" : "Employment"]]),
     ["coapp", "Co-applicants"],
     ["loanreq", "Loan requirement"], ["existing", "Existing loans"],
-    ["refs", "References"], ["property", "Property"], ["loans", "Loan files"],
+    ["refs", "References"], ["property", "Property"],
+    ...(embedded ? [] : [["loans", "Loan files"]]),
   ];
 
   return (
     <>
-      <PageHead title={isNew ? (company ? "New Self Employed customer" : "New customer") : name}>
-        {!isNew && data && <><span className="hint">{data.customer.srNo}</span><Badge v={data.customer.status} /></>}
-        <button className="btn ghost" onClick={() => nav(base)}>← Back to list</button>
+      <PageHead title={embedded ? "Application details" : isNew ? (company ? "New Self Employed customer" : "New customer") : name}>
+        {!embedded && !isNew && data && <><span className="hint">{data.customer.srNo}</span><Badge v={data.customer.status} /></>}
+        {!embedded && <button className="btn ghost" onClick={() => nav("/customers")}>← Back to list</button>}
         <button className="btn" disabled={saving} onClick={save}>{saving ? "Saving…" : isNew ? "Submit" : "Save changes"}</button>
       </PageHead>
 
@@ -250,11 +250,11 @@ export default function CustomerForm({ company }: { company: boolean }) {
       <div className="card" id="sec-property"><h2 style={{ marginBottom: 12 }}>Property details</h2>
         <Grid fields={C.propertyFields} value={property} onChange={setProperty} /></div>
 
-      <div className="card" id="sec-loans">
+      {!embedded && <div className="card" id="sec-loans">
         <h2 style={{ marginBottom: 12 }}>Loan files</h2>
         {isNew ? <p className="hint">Submit the customer first, then add loan files here.</p>
           : <LoanFiles customerId={id as Id<"customers">} />}
-      </div>
+      </div>}
     </>
   );
 }

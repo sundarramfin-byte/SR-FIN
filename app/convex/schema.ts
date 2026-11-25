@@ -6,6 +6,17 @@ import { v } from "convex/values";
 const strMap = v.record(v.string(), v.string());
 
 export default defineSchema({
+  users: defineTable({
+    email: v.string(),
+    salt: v.string(),
+    passwordHash: v.string(),
+  }).index("by_email", ["email"]),
+
+  sessions: defineTable({
+    token: v.string(),
+    userId: v.id("users"),
+  }).index("by_token", ["token"]),
+
   settings: defineTable({
     companyName: v.string(),
     address: v.string(),

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -81,15 +81,21 @@ export default function Invoices() {
   );
 }
 
-function InvoiceEditor({ id, onClose }: { id?: Id<"invoices">; onClose: () => void }) {
+export function InvoiceEditor({ id, onClose, presetCustomerId, presetLoanFileId }: {
+  id?: Id<"invoices">;
+  onClose: () => void;
+  /** Start a new invoice already filled for this customer / loan file (from the customer page). */
+  presetCustomerId?: Id<"customers">;
+  presetLoanFileId?: Id<"loanFiles">;
+}) {
   const existing = useQuery(api.invoices.get, id ? { id } : "skip");
   const customers = useQuery(api.customers.list, {}) ?? [];
   const create = useMutation(api.invoices.create);
   const update = useMutation(api.invoices.update);
   const toast = useToast();
 
-  const [customerId, setCustomerId] = useState<string>("");
-  const [loanFileId, setLoanFileId] = useState<string>("");
+  const [customerId, setCustomerId] = useState<string>(presetCustomerId ?? "");
+  const [loanFileId, setLoanFileId] = useState<string>(presetLoanFileId ?? "");
   const [date, setDate] = useState(today());
   const [propertyType, setPropertyType] = useState("Old");
   const [land, setLand] = useState("");
@@ -106,6 +112,17 @@ function InvoiceEditor({ id, onClose }: { id?: Id<"invoices">; onClose: () => vo
     setPropertyType(i.propertyType ?? "Old"); setLand(String(i.landCost)); setCons(String(i.constructionCost));
     setSanction(String(i.sanctionAmount)); setLines(i.lines); setLoaded(true);
   }
+
+  const presetApplied = useRef(false);
+  useEffect(() => {
+    if (id || !presetLoanFileId || presetApplied.current) return;
+    const f = files.find((x) => x._id === presetLoanFileId);
+    if (!f) return;
+    presetApplied.current = true;
+    const l = f.landCost ?? 0, c = f.constructionCost ?? 0, sn = f.sanctionAmount ?? 0, pt = f.propertyType ?? "Old";
+    setLand(String(l)); setCons(String(c)); setSanction(String(sn)); setPropertyType(pt);
+    setLines(buildInvoiceLines({ propertyType: pt, landCost: l, constructionCost: c, sanctionAmount: sn }));
+  }, [files, id, presetLoanFileId]);
 
   const landN = toNum(land) ?? 0, consN = toNum(cons) ?? 0, sanN = toNum(sanction) ?? 0;
 

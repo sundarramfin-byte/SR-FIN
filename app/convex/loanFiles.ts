@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { audit } from "./lib";
 
 const fields = {
@@ -51,6 +52,21 @@ function validate(a: Dates) {
   }
 }
 
+/** Customer stage follows the furthest loan file; a manually cancelled customer is left alone. */
+async function syncStatus(ctx: MutationCtx, customerId: Id<"customers">) {
+  const c = await ctx.db.get(customerId);
+  if (!c || c.status === "Cancelled") return;
+  const files = await ctx.db.query("loanFiles").withIndex("by_customer", (q) => q.eq("customerId", customerId)).collect();
+  const status = files.some((f) => f.disbursementDate)
+    ? "Disbursed"
+    : files.some((f) => f.sanctionDate)
+      ? "Sanctioned"
+      : files.some((f) => f.loginDate)
+        ? "Login"
+        : "Enquiry";
+  if (status !== c.status) await ctx.db.patch(customerId, { status });
+}
+
 export const listByCustomer = query({
   args: { customerId: v.id("customers") },
   handler: (ctx, { customerId }) =>
@@ -78,18 +94,7 @@ export const save = mutation({
     let fileId = id;
     if (id) await ctx.db.patch(id, data);
     else fileId = await ctx.db.insert("loanFiles", data);
-    // keep customer status in step with the loan progress
-    const c = await ctx.db.get(data.customerId);
-    if (c && c.status !== "Cancelled") {
-      const status = data.disbursementDate
-        ? "Disbursed"
-        : data.sanctionDate
-          ? "Sanctioned"
-          : data.loginDate
-            ? "Login"
-            : "Enquiry";
-      if (status !== c.status) await ctx.db.patch(c._id, { status });
-    }
+    await syncStatus(ctx, data.customerId);
     await audit(ctx, id ? "update" : "create", "loanFile", String(fileId), data.fileNo ?? "");
     return fileId;
   },
@@ -98,7 +103,9 @@ export const save = mutation({
 export const remove = mutation({
   args: { id: v.id("loanFiles") },
   handler: async (ctx, { id }) => {
+    const file = await ctx.db.get(id);
     await ctx.db.delete(id);
+    if (file) await syncStatus(ctx, file.customerId);
     await audit(ctx, "delete", "loanFile", id, "");
   },
 });

@@ -2,17 +2,16 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import {
-  Bell, BookOpen, Building2, CalendarRange, FileSpreadsheet, FileText, Landmark, LayoutDashboard,
-  Menu, ReceiptText, Search, Settings as SettingsIcon, UserRound, Users, Wallet, Briefcase, Activity, type LucideIcon,
+  Bell, BookOpen, Building2, CalendarRange, FileText, Landmark, LayoutDashboard,
+  LogOut, Menu, ReceiptText, Search, Settings as SettingsIcon, UserRound, Users, Wallet, Activity, type LucideIcon,
 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
+import { useAuth } from "./AuthGate";
 import { SidebarWaves, WorkspaceWaves } from "./Decor";
 
 export const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/customer-codes", label: "Customer Code List", icon: Users },
-  { to: "/customer-sheet", label: "Customer Data Sheet", icon: FileSpreadsheet },
-  { to: "/self-employed", label: "Self Employed", icon: Briefcase },
+  { to: "/customers", label: "Customers", icon: Users },
   { to: "/invoice", label: "Invoice", icon: FileText },
   { to: "/bank-invoice", label: "Bank Invoice", icon: Landmark },
   { to: "/banks", label: "Bank / DSA Codes", icon: Building2 },
@@ -79,6 +78,7 @@ function Profile({ name, director }: { name?: string; director?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useOutside(() => setOpen(false));
   const nav = useNavigate();
+  const { email, logout } = useAuth();
   return (
     <div className="dropdown" ref={ref}>
       <button className="avatar" aria-label="Profile" onClick={() => setOpen((o) => !o)}>{initials(director ?? name)}</button>
@@ -89,7 +89,8 @@ function Profile({ name, director }: { name?: string; director?: string }) {
             <div className="hint" style={{ fontWeight: 400 }}>{name}</div>
           </div>
           <button className="dm-item" onClick={() => { setOpen(false); nav("/settings"); }}><SettingsIcon /> Company settings</button>
-          <button className="dm-item" onClick={() => { setOpen(false); nav("/customer-codes"); }}><UserRound /> Customer list</button>
+          <button className="dm-item" onClick={() => { setOpen(false); nav("/customers"); }}><UserRound /> All customers</button>
+          <button className="dm-item" onClick={logout}><LogOut /> Log out <small>{email}</small></button>
         </div>
       )}
     </div>
@@ -120,8 +121,7 @@ function GlobalSearch() {
   function handleSelect(c: NonNullable<typeof custResults>[number]) {
     setOpen(false);
     setQ("");
-    const path = c.customerType === "Self Employed" ? `/self-employed/${c._id}` : `/customer-sheet/${c._id}`;
-    nav(path);
+    nav(`/customers/${c._id}`);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -130,7 +130,7 @@ function GlobalSearch() {
       if (bankResults.length > 0 && (!custResults || custResults.length === 0)) {
         nav(`/banks?q=${encodeURIComponent(q.trim())}`);
       } else {
-        nav(`/customer-codes?q=${encodeURIComponent(q.trim())}`);
+        nav(`/customers?q=${encodeURIComponent(q.trim())}`);
       }
     }
   }
@@ -226,10 +226,10 @@ function GlobalSearch() {
                     style={{ padding: "8px 14px", fontSize: "11.5px", color: "var(--green-primary)", background: "var(--bg)", textAlign: "center", cursor: "pointer", fontWeight: 600 }}
                     onClick={() => {
                       setOpen(false);
-                      nav(`/customer-codes?q=${encodeURIComponent(q.trim())}`);
+                      nav(`/customers?q=${encodeURIComponent(q.trim())}`);
                     }}
                   >
-                    View all customer results in Customer Code List →
+                    View all customer results in Customers →
                   </div>
                 </>
               )}

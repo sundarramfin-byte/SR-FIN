@@ -83,3 +83,27 @@ export function PageHead({ title, children }: { title: string; children?: ReactN
 
 /** Parse a numeric input, empty -> undefined. */
 export const toNum = (s: string) => (s.trim() === "" ? undefined : Number(s));
+
+/* ---------------- stage stepper ---------------- */
+export const STAGES = ["Enquiry", "Login", "Sanctioned", "Disbursed"] as const;
+
+/** Progress bar for a customer's loan stage. Click a step (when onSet is given) to override it by hand. */
+export function StatusStepper({ status, onSet }: { status: string; onSet?: (s: string) => void }) {
+  const cancelled = status === "Cancelled";
+  const cur = STAGES.indexOf(status as (typeof STAGES)[number]);
+  return (
+    <div className={"stepper" + (cancelled ? " is-cancelled" : "")} role="list" aria-label={`Stage: ${status}`}>
+      {STAGES.map((s, i) => {
+        const state = cancelled ? "off" : i < cur ? "done" : i === cur ? "now" : "todo";
+        return (
+          <button key={s} type="button" role="listitem" className={"step " + state} disabled={!onSet}
+            title={onSet ? `Set stage to ${s}` : s} onClick={() => onSet?.(s)}>
+            <i>{state === "done" ? "✓" : i + 1}</i>
+            <span>{s}</span>
+          </button>
+        );
+      })}
+      {cancelled && <span className="badge Cancelled" style={{ marginLeft: 10 }}>Cancelled</span>}
+    </div>
+  );
+}

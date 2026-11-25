@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -71,7 +71,13 @@ function PaymentPage({ kind }: { kind: "receipt" | "voucher" }) {
   );
 }
 
-function PaymentEditor({ kind, onClose }: { kind: "receipt" | "voucher"; onClose: () => void }) {
+export function PaymentEditor({ kind, onClose, presetCustomerId, presetInvoiceId }: {
+  kind: "receipt" | "voucher";
+  onClose: () => void;
+  /** Open already filled for this customer / invoice (from the customer page). */
+  presetCustomerId?: Id<"customers">;
+  presetInvoiceId?: Id<"invoices">;
+}) {
   const isReceipt = kind === "receipt";
   const customers = useQuery(api.customers.list, {}) ?? [];
   const invoices = useQuery(api.invoices.list) ?? [];
@@ -81,10 +87,24 @@ function PaymentEditor({ kind, onClose }: { kind: "receipt" | "voucher"; onClose
   const toast = useToast();
 
   const [date, setDate] = useState(today());
-  const [customerId, setCustomerId] = useState("");
-  const [invoiceId, setInvoiceId] = useState("");
+  const [customerId, setCustomerId] = useState<string>(presetCustomerId ?? "");
+  const [invoiceId, setInvoiceId] = useState<string>(presetInvoiceId ?? "");
   const [payee, setPayee] = useState("");
   const [lines, setLines] = useState<Line[]>([blank()]);
+
+  /** Choosing an invoice fills an empty first line with the balance still due. */
+  function pickInvoice(iid: string) {
+    setInvoiceId(iid);
+    const inv = invoices.find((i) => i._id === iid);
+    if (inv && lines.length === 1 && !lines[0].amount && !lines[0].particulars) {
+      setLines([{ ...lines[0], particulars: `Against invoice ${inv.invoiceNo}`, amount: Math.max(inv.balance, 0) }]);
+    }
+  }
+  const presetDone = useRef(false);
+  useEffect(() => {
+    if (presetDone.current || !presetInvoiceId) return;
+    if (invoices.some((i) => i._id === presetInvoiceId)) { presetDone.current = true; pickInvoice(presetInvoiceId); }
+  });
 
   const cust = customers.find((c) => c._id === customerId);
   const custInvoices = invoices.filter((i) => i.customerId === customerId && i.status !== "Cancelled");
@@ -128,7 +148,7 @@ function PaymentEditor({ kind, onClose }: { kind: "receipt" | "voucher"; onClose
         <Fld label="Cell no"><input readOnly className="computed" value={cust?.cell ?? ""} /></Fld>
         {isReceipt ? (
           <Fld label="Against invoice (optional)">
-            <select value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)}>
+            <select value={invoiceId} onChange={(e) => pickInvoice(e.target.value)}>
               <option value="">— none —</option>
               {custInvoices.map((i) => <option key={i._id} value={i._id}>{i.invoiceNo} – balance {inr(i.balance)}</option>)}
             </select>

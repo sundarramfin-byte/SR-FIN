@@ -1,8 +1,9 @@
 import { useId, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, Banknote, FileStack, HandCoins, Landmark, Receipt, Users, Wallet, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Banknote, Copy, ExternalLink, Link2, MessageCircle, FileStack, HandCoins, Landmark, Receipt, Users, Wallet, type LucideIcon } from "lucide-react";
 import { api } from "../../convex/_generated/api";
+import { useToast } from "../components/ui";
 import { fmtDate, FY_START, inr } from "../lib/format";
 
 /* ---------------- date range ---------------- */
@@ -67,7 +68,7 @@ function Doughnut({ data }: { data: Record<string, number> }) {
       </div>
       <div className="legend">
         {keys.map((k) => (
-          <Link key={k} to={`/customer-codes?status=${encodeURIComponent(k)}`} className="legend-row" title={`View ${k} customers`}>
+          <Link key={k} to={`/customers?status=${encodeURIComponent(k)}`} className="legend-row" title={`View ${k} customers`}>
             <i style={{ background: STATUS_COLORS[k] ?? "#73877d" }} />
             <span className="nm">{k}</span>
             <b>{data[k]}</b>
@@ -139,6 +140,31 @@ function Kpi({ icon: Icon, label, value, note, accent, to }: { icon: LucideIcon;
   );
 }
 
+/** Compact strip for the client self-service form: copy, WhatsApp or open it. */
+function IntakeLink() {
+  const toast = useToast();
+  const url = `${window.location.origin}/apply`;
+  return (
+    <div className="intake no-print">
+      <div className="intake-ico"><Link2 /></div>
+      <div className="intake-text">
+        <b>Client application form</b>
+        <small>Send this link so customers can fill in their own details from their phone.</small>
+      </div>
+      <div className="intake-url" title={url}>{url}</div>
+      <div className="intake-actions">
+        <button type="button" className="btn secondary sm" onClick={() => { navigator.clipboard.writeText(url); toast.ok("Link copied"); }}>
+          <Copy size={14} /> Copy
+        </button>
+        <button type="button" className="btn sm" onClick={() => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hello! Please fill out your loan application form using this link: ${url} - SUNDAR RAM FIN CONSULTANCY [P] LTD`)}`, "_blank")}>
+          <MessageCircle size={14} /> WhatsApp
+        </button>
+        <a href="/apply" target="_blank" rel="noreferrer" className="btn ghost sm" title="Open the form in a new tab"><ExternalLink size={14} /></a>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [preset, setPreset] = useState<Preset>("all");
   const [cFrom, setCFrom] = useState("");
@@ -180,52 +206,17 @@ export default function Dashboard() {
       </div>
       {preset === "custom" && !range && <p className="hint" style={{ marginTop: -8 }}>Pick a valid From and To date to apply the filter (showing all time meanwhile).</p>}
 
-      <div className="card" style={{ marginBottom: 16, background: "linear-gradient(90deg, var(--c-primary-light), var(--c-white))", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, padding: "14px 20px" }}>
-        <div>
-          <b style={{ color: "var(--c-primary-dark)", fontSize: "1rem" }}>📋 Client Application Link (Online Intake)</b>
-          <div style={{ fontSize: "0.85rem", color: "var(--c-text-muted)", marginTop: 2 }}>
-            Share this link with customers so they can fill their own details directly from their phone or computer:
-            <code style={{ marginLeft: 8, background: "rgba(0,0,0,0.06)", padding: "2px 6px", borderRadius: 4, fontWeight: "bold" }}>
-              {window.location.origin}/apply
-            </code>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            type="button"
-            className="btn secondary sm"
-            onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/apply`);
-              alert(`Copied link to clipboard: ${window.location.origin}/apply`);
-            }}
-          >
-            📋 Copy Link
-          </button>
-          <button
-            type="button"
-            className="btn sm"
-            onClick={() => {
-              const text = encodeURIComponent(`Hello! Please fill out your loan application form using this link: ${window.location.origin}/apply - SUNDAR RAM FIN CONSULTANCY [P] LTD`);
-              window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
-            }}
-          >
-            💬 Share on WhatsApp
-          </button>
-          <a href="/apply" target="_blank" rel="noreferrer" className="btn ghost sm">
-            ↗ Open Form
-          </a>
-        </div>
-      </div>
+      <IntakeLink />
 
       {!d ? (
         <div className="empty">Loading…</div>
       ) : (
         <>
           <div className="cards cards-4">
-            <Kpi accent="mint" icon={Users} label="Customers" value={String(d.customers)} to="/customer-codes" />
-            <Kpi accent="green" icon={FileStack} label="Loan Files" value={String(d.loanFiles)} to="/customer-codes" />
-            <Kpi accent="fresh" icon={Landmark} label="Sanctioned (₹)" value={inr(d.sanctioned)} to="/customer-codes?status=Sanctioned" />
-            <Kpi accent="aqua" icon={HandCoins} label="Disbursed (₹)" value={inr(d.disbursed)} to="/customer-codes?status=Disbursed" />
+            <Kpi accent="mint" icon={Users} label="Customers" value={String(d.customers)} to="/customers" />
+            <Kpi accent="green" icon={FileStack} label="Loan Files" value={String(d.loanFiles)} to="/customers" />
+            <Kpi accent="fresh" icon={Landmark} label="Sanctioned (₹)" value={inr(d.sanctioned)} to="/customers?status=Sanctioned" />
+            <Kpi accent="aqua" icon={HandCoins} label="Disbursed (₹)" value={inr(d.disbursed)} to="/customers?status=Disbursed" />
           </div>
           <div className="cards cards-3">
             <Kpi accent="yellow" icon={Banknote} label="Pending Payouts (net)" value={inr(d.pendingPayout)} to="/bank-invoice?status=Raised" />
