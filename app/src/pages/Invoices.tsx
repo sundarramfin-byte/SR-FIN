@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -101,7 +101,9 @@ export function InvoiceEditor({ id, onClose, presetCustomerId, presetLoanFileId 
   const [land, setLand] = useState("");
   const [cons, setCons] = useState("");
   const [sanction, setSanction] = useState("");
-  const [lines, setLines] = useState<InvoiceLine[]>([]);
+  const [savedLines, setSavedLines] = useState<InvoiceLine[]>([]);
+  /** Amounts / modes the user typed over the standard charges (new invoices), keyed by group + particulars. */
+  const [typed, setTyped] = useState<Record<string, Partial<InvoiceLine>>>({});
   const [loaded, setLoaded] = useState(!id);
 
   const files = useQuery(api.loanFiles.listByCustomer, customerId ? { customerId: customerId as Id<"customers"> } : "skip") ?? [];
@@ -110,7 +112,7 @@ export function InvoiceEditor({ id, onClose, presetCustomerId, presetLoanFileId 
     const i = existing.invoice;
     setCustomerId(i.customerId); setLoanFileId(i.loanFileId ?? ""); setDate(i.date);
     setPropertyType(i.propertyType ?? "Old"); setLand(String(i.landCost)); setCons(String(i.constructionCost));
-    setSanction(String(i.sanctionAmount)); setLines(i.lines); setLoaded(true);
+    setSanction(String(i.sanctionAmount)); setSavedLines(i.lines); setLoaded(true);
   }
 
   const presetApplied = useRef(false);
@@ -121,7 +123,6 @@ export function InvoiceEditor({ id, onClose, presetCustomerId, presetLoanFileId 
     presetApplied.current = true;
     const l = f.landCost ?? 0, c = f.constructionCost ?? 0, sn = f.sanctionAmount ?? 0, pt = f.propertyType ?? "Old";
     setLand(String(l)); setCons(String(c)); setSanction(String(sn)); setPropertyType(pt);
-    setLines(buildInvoiceLines({ propertyType: pt, landCost: l, constructionCost: c, sanctionAmount: sn }));
   }, [files, id, presetLoanFileId]);
 
   const landN = toNum(land) ?? 0, consN = toNum(cons) ?? 0, sanN = toNum(sanction) ?? 0;
@@ -135,14 +136,24 @@ export function InvoiceEditor({ id, onClose, presetCustomerId, presetLoanFileId 
     }
   }
 
+  /** New invoice: the standard charges, recalculated from the costs, with the user's typed amounts kept.
+   *  Existing invoice: the lines exactly as saved. */
+  const key = (l: InvoiceLine) => `${l.group}|${l.particulars}`;
+  const lines: InvoiceLine[] = id
+    ? savedLines
+    : buildInvoiceLines({ propertyType, landCost: landN, constructionCost: consN, sanctionAmount: sanN })
+        .map((l) => ({ ...l, ...typed[key(l)] }));
   const setLine = (i: number, patch: Partial<InvoiceLine>) =>
-    setLines((l) => l.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+    id
+      ? setSavedLines((l) => l.map((x, j) => (j === i ? { ...x, ...patch } : x)))
+      : setTyped((t) => ({ ...t, [key(lines[i])]: { ...t[key(lines[i])], ...patch } }));
   const subtotal = (g: string) => lines.filter((l) => l.group === g).reduce((s, l) => s + (l.amount || 0), 0);
   const total = lines.reduce((s, l) => s + (l.amount || 0), 0);
 
   async function save() {
     try {
       if (!customerId) throw new Error("Select a customer");
+      if (total <= 0) throw new Error("Enter at least one charge amount");
       const payload = {
         date, customerId: customerId as Id<"customers">,
         loanFileId: (loanFileId || undefined) as Id<"loanFiles"> | undefined,
@@ -185,36 +196,35 @@ export function InvoiceEditor({ id, onClose, presetCustomerId, presetLoanFileId 
         <Fld label="Sanction amount ₹"><input type="number" value={sanction} onChange={(e) => setSanction(e.target.value)} /></Fld>
       </div>
 
-      <div className="row" style={{ marginBottom: 10 }}>
-        <button className="btn" onClick={() => setLines(buildInvoiceLines({ propertyType, landCost: landN, constructionCost: consN, sanctionAmount: sanN }))}>
-          Load standard charges
-        </button>
-        <span className="hint">Fills the standard lines from your costs. Every amount stays editable.</span>
-      </div>
+      <p className="hint" style={{ marginBottom: 10 }}>Standard charges fill in automatically from the costs above. Just change any amount that is different for this customer.</p>
 
       <div className="table-wrap">
         <table className="t">
-          <thead><tr><th>Group</th><th>Particulars</th><th>Basis / note</th><th className="r">Amount ₹</th><th>Mode</th><th /></tr></thead>
+          <thead><tr><th>Particulars</th><th>Basis / note</th><th className="r">Amount ₹</th><th>Mode</th></tr></thead>
           <tbody>
-            {lines.map((l, i) => (
-              <tr key={i}>
-                <td><select value={l.group} onChange={(e) => setLine(i, { group: e.target.value })}>{GROUPS.map((g) => <option key={g}>{g}</option>)}</select></td>
-                <td><input value={l.particulars} onChange={(e) => setLine(i, { particulars: e.target.value })} /></td>
-                <td><input value={l.basis ?? ""} onChange={(e) => setLine(i, { basis: e.target.value })} /></td>
-                <td><input type="number" style={{ width: 120, textAlign: "right" }} value={l.amount} onChange={(e) => setLine(i, { amount: Number(e.target.value) })} /></td>
-                <td><input value={l.mode ?? ""} onChange={(e) => setLine(i, { mode: e.target.value })} /></td>
-                <td><button className="btn danger sm" onClick={() => setLines((x) => x.filter((_, j) => j !== i))}>×</button></td>
-              </tr>
-            ))}
+            {GROUPS.map((g) => {
+              const rows = lines.map((l, i) => ({ l, i })).filter((x) => x.l.group === g);
+              if (rows.length === 0) return null;
+              return (
+                <Fragment key={g}>
+                  <tr><td colSpan={4} style={{ background: "var(--sage)", fontWeight: 700, color: "var(--green-primary)" }}>{g}</td></tr>
+                  {rows.map(({ l, i }) => (
+                    <tr key={i}>
+                      <td>{l.particulars}</td>
+                      <td><small className="hint">{l.basis}</small></td>
+                      <td><input type="number" style={{ width: 120, textAlign: "right" }} value={l.amount} onChange={(e) => setLine(i, { amount: Number(e.target.value) })} /></td>
+                      <td><input value={l.mode ?? ""} onChange={(e) => setLine(i, { mode: e.target.value })} /></td>
+                    </tr>
+                  ))}
+                </Fragment>
+              );
+            })}
           </tbody>
           <tfoot>
-            {GROUPS.map((g) => <tr key={g}><td colSpan={3}>{g} subtotal</td><td className="r">{inr(subtotal(g))}</td><td colSpan={2} /></tr>)}
-            <tr><td colSpan={3}>GRAND TOTAL</td><td className="r">{inr(total)}</td><td colSpan={2} /></tr>
+            {GROUPS.map((g) => <tr key={g}><td colSpan={2}>{g} subtotal</td><td className="r">{inr(subtotal(g))}</td><td /></tr>)}
+            <tr><td colSpan={2}>GRAND TOTAL</td><td className="r">{inr(total)}</td><td /></tr>
           </tfoot>
         </table>
-      </div>
-      <div style={{ marginTop: 10 }}>
-        <button className="btn secondary sm" onClick={() => setLines((l) => [...l, { group: GROUPS[3], particulars: "", amount: 0, mode: "Current / GPay" }])}>+ Add line</button>
       </div>
     </Modal>
   );
