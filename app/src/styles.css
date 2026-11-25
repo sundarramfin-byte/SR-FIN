@@ -927,3 +927,12 @@ select { cursor: pointer; }
 .intake-text small { color: var(--text-2); font-size: 12px; }
 .intake-url { font: 12.5px ui-monospace, Consolas, monospace; color: var(--green-primary); background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; padding: 7px 12px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .intake-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ---------- modal header: wrap toolbar neatly, keep every button readable on green ---------- */
+.modal-head { flex-wrap: wrap; gap: 10px 16px; }
+.modal-head h2 { flex: 0 0 auto; white-space: nowrap; }
+.modal-head > .row { flex: 1 1 420px; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.modal-head .btn.ghost { background: transparent; border-color: rgba(255, 255, 255, 0.55); color: #fff; }
+.modal-head .btn.ghost:hover { background: rgba(255, 255, 255, 0.18); }
+.modal-head .btn.primary { background: #fff; border-color: #fff; color: var(--green-primary); }
+.modal-head .btn-group { border-color: rgba(255, 255, 255, 0.55) !important; }
